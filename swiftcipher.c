@@ -231,14 +231,15 @@ void DecryptText(const uint8_t* encryptedText, char* output, const SwiftCipherKe
         memcpy(decryptedText + i, block, BLOCK_SIZE);
     }
 
-    // Remove padding and convert to string
+    // Remove padding (assuming zero padding)
     size_t textLen = paddedLen;
     while (textLen > 0 && decryptedText[textLen - 1] == 0) {
         textLen--;
     }
 
+    // Convert to string
     memcpy(output, decryptedText, textLen);
-    output[textLen] = '\0';
+    output[textLen] = '\0'; // Null-terminate the string
 
     free(decryptedText);
 }
