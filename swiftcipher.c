@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <openssl/rand.h> // OpenSSL's random number generator
 
 // S-Box and Inverse S-Box
 static const uint8_t S_BOX[256] = {
@@ -187,4 +188,101 @@ void DecryptBlock(uint8_t* block, uint8_t* prevBlock, const SwiftCipherKey* ciph
     // Update previous block (ciphertext)
     memcpy(prevBlock, block, BLOCK_SIZE);
 }
+// Function to generate SwiftCipher key using OpenSSL's random number generator
+void generate_swiftcipher_key(SwiftCipherKey* cipherKey) {
+    if (RAND_bytes(cipherKey->key, KEY_SIZE) != 1) {
+        fprintf(stderr, "Error generating random key with OpenSSL.\n");
+        exit(1);
+    }
+    KeyExpansion(cipherKey->key, cipherKey);
+}
 
+// Encrypt and Decrypt functions for text and files
+void EncryptText(const char* text, uint8_t* output, const SwiftCipherKey* cipherKey, uint8_t* iv) {
+    uint8_t block[BLOCK_SIZE];
+    uint8_t prevBlock[BLOCK_SIZE] = {0};
+
+    size_t len = strlen(text);
+    size_t paddedLen = (len + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE; // Pad to the nearest BLOCK_SIZE
+    uint8_t* paddedText = (uint8_t*) malloc(paddedLen);
+    memcpy(paddedText, text, len);
+    memset(paddedText + len, 0, paddedLen - len); // Zero padding
+
+    for (size_t i = 0; i < paddedLen; i += BLOCK_SIZE) {
+        memcpy(block, paddedText + i, BLOCK_SIZE);
+        EncryptBlock(block, prevBlock, cipherKey, iv);
+        memcpy(output + i, block, BLOCK_SIZE);
+    }
+
+    free(paddedText);
+}
+
+void DecryptText(const uint8_t* encryptedText, char* output, const SwiftCipherKey* cipherKey, uint8_t* iv) {
+    uint8_t block[BLOCK_SIZE];
+    uint8_t prevBlock[BLOCK_SIZE] = {0};
+
+    size_t len = strlen((char*) encryptedText);
+    size_t paddedLen = (len / BLOCK_SIZE) * BLOCK_SIZE;
+    uint8_t* decryptedText = (uint8_t*) malloc(paddedLen);
+
+    for (size_t i = 0; i < paddedLen; i += BLOCK_SIZE) {
+        memcpy(block, encryptedText + i, BLOCK_SIZE);
+        DecryptBlock(block, prevBlock, cipherKey, iv);
+        memcpy(decryptedText + i, block, BLOCK_SIZE);
+    }
+
+    // Remove padding and convert to string
+    size_t textLen = paddedLen;
+    while (textLen > 0 && decryptedText[textLen - 1] == 0) {
+        textLen--;
+    }
+
+    memcpy(output, decryptedText, textLen);
+    output[textLen] = '\0';
+
+    free(decryptedText);
+}
+
+void EncryptFile(const char* inputFile, const char* outputFile, const SwiftCipherKey* cipherKey, uint8_t* iv) {
+    FILE* in = fopen(inputFile, "rb");
+    FILE* out = fopen(outputFile, "wb");
+
+    if (!in || !out) {
+        fprintf(stderr, "Error opening file.\n");
+        exit(1);
+    }
+
+    uint8_t block[BLOCK_SIZE];
+    uint8_t prevBlock[BLOCK_SIZE] = {0};
+    size_t bytesRead;
+
+    while ((bytesRead = fread(block, 1, BLOCK_SIZE, in)) > 0) {
+        EncryptBlock(block, prevBlock, cipherKey, iv);
+        fwrite(block, 1, bytesRead, out);
+    }
+
+    fclose(in);
+    fclose(out);
+}
+
+void DecryptFile(const char* inputFile, const char* outputFile, const SwiftCipherKey* cipherKey, uint8_t* iv) {
+    FILE* in = fopen(inputFile, "rb");
+    FILE* out = fopen(outputFile, "wb");
+
+    if (!in || !out) {
+        fprintf(stderr, "Error opening file.\n");
+        exit(1);
+    }
+
+    uint8_t block[BLOCK_SIZE];
+    uint8_t prevBlock[BLOCK_SIZE] = {0};
+    size_t bytesRead;
+
+    while ((bytesRead = fread(block, 1, BLOCK_SIZE, in)) > 0) {
+        DecryptBlock(block, prevBlock, cipherKey, iv);
+        fwrite(block, 1, bytesRead, out);
+    }
+
+    fclose(in);
+    fclose(out);
+}
