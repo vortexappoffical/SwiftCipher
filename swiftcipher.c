@@ -287,3 +287,37 @@ void DecryptFile(const char* inputFile, const char* outputFile, const SwiftCiphe
     fclose(in);
     fclose(out);
 }
+
+int main() {
+    // Example input
+    const char* plaintext = "Hello, this is a test message!";
+    uint8_t iv[BLOCK_SIZE] = {0};  // Initialization vector (can be random)
+    SwiftCipherKey cipherKey;
+
+    // Generate a random SwiftCipher key using OpenSSL
+    generate_swiftcipher_key(&cipherKey);
+
+    // Allocate memory for encrypted output (same size as input)
+    size_t len = strlen(plaintext);
+    size_t paddedLen = (len + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
+    uint8_t* encryptedText = (uint8_t*) malloc(paddedLen);
+    uint8_t* decryptedText = (uint8_t*) malloc(paddedLen);
+
+    // Encrypt the plaintext
+    EncryptText(plaintext, encryptedText, &cipherKey, iv);
+    printf("Encrypted Text (in Hex):\n");
+    for (size_t i = 0; i < paddedLen; i++) {
+        printf("%02x ", encryptedText[i]);
+    }
+    printf("\n");
+
+    // Decrypt the encrypted text
+    DecryptText(encryptedText, (char*)decryptedText, &cipherKey, iv);
+    printf("Decrypted Text: %s\n", decryptedText);
+
+    // Clean up
+    free(encryptedText);
+    free(decryptedText);
+
+    return 0;
+}
