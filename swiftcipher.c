@@ -47,7 +47,7 @@ static const uint8_t RCON[10] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
 
 // Block size and key length definitions (Same as your original implementation)
 #define BLOCK_SIZE 16
-#define KEY_SIZE 128
+#define KEY_SIZE 1024  // Set key size to 1024 bits (128 bytes)
 #define ROUND_KEYS 80
 
 typedef struct {
