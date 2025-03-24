@@ -47,28 +47,22 @@ INV_SBOX = [
     0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
 ]
 
-# RCON - Round Constants, které se používají při rozšiřování klíče.
+# RCON
 RCON = [
-    0x01000000, 0x02000000, 0x04000000, 0x08000000, 
-    0x10000000, 0x20000000, 0x40000000, 0x80000000, 
-    0x1B000000, 0x36000000
+    0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36
 ]
 
-# Funkce pro vylepšení rozšiřování klíče:
+# Key Scheduling (Round Key Generation)
 def key_expansion(key):
-    key_schedule = []
-    temp = []
-    key_schedule.extend(key)
-
-    # Inicializace a rozšíření klíče
-    for i in range(len(key), 16):  # Assuming the key size is 16 bytes for example
-        temp = key_schedule[i-1]
-        if i % 4 == 0:
-            # Rotace a substituce v S-box
-            temp = SBOX[temp[1]]  # Replace temp with S-box value of a byte
-            temp = temp ^ RCON[i // 4]
-        key_schedule.append(temp ^ key_schedule[i-4])
-    return key_schedule
+    expanded_keys = [key]
+    for i in range(1, 11):
+        prev_key = expanded_keys[-1]
+        t = prev_key[-4:]  # Last 4 bytes
+        t = [SBOX[b] for b in t]  # Apply S-box
+        t[0] ^= RCON[i]
+        new_key = [prev_key[j] ^ t[j % 4] for j in range(16)]
+        expanded_keys.append(new_key)
+    return expanded_keys
 
 
 # XOR operation
